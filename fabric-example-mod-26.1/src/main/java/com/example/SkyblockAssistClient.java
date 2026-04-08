@@ -1,15 +1,15 @@
 package com.example;
 
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommands; // <-- Change: ClientCommands instead of ClientCommandManager
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;// <-- Change: ClientCommands instead of ClientCommandManager
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
 import com.mojang.brigadier.arguments.StringArgumentType;
-import net.minecraft.network.chat.Component;
+import net.minecraft.text.Text;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -34,20 +34,25 @@ public class SkyblockAssistClient implements ClientModInitializer {
         System.out.println("[SkyblockAI] Mod is loading...");
         loadConfig();
 
-        // We are using the most basic registration possible
-        net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("assist")
-                    .executes(context -> {
-                        // Bare minimum logic: No arguments, no chat components
-                        System.out.println("[AI] Command triggered!");
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            dispatcher.register(ClientCommandManager.literal("assist")
+                    // 1. Define the argument name and type ("query" is just a label)
+                    .then(ClientCommandManager.argument("query", StringArgumentType.greedyString())
+                            .executes(context -> {
+                                // 2. Extract the string from the context
+                                String userText = StringArgumentType.getString(context, "query");
 
-                        java.util.concurrent.CompletableFuture.runAsync(() -> {
-                            String ahPrice = fetchCoflnetAhPrice("RECOMBOBULATOR_3000");
-                            System.out.println("[API Results]: Recomb is " + ahPrice);
-                        });
+                                context.getSource().sendFeedback(Text.literal("§a[AI] Searching for: §f" + userText));
 
-                        return 1;
-                    })
+                                java.util.concurrent.CompletableFuture.runAsync(() -> {
+                                    // You can now use userText here to search specifically for what the user typed!
+                                    String price = fetchCoflnetBazaarPrice(userText.toUpperCase().replace(" ", "_"));
+                                    context.getSource().sendFeedback(Text.literal("§0§kL§bAPI Results§0§kL§f: " + userText + " is " + price));
+                                });
+
+                                return 1;
+                            })
+                    )
             );
         });
     }
@@ -114,4 +119,5 @@ public class SkyblockAssistClient implements ClientModInitializer {
         }
         return "Unknown BZ Price";
     }
+
 }
